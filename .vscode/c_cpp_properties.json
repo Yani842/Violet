@@ -1,0 +1,36 @@
+{
+    "configurations": [
+        {
+            "name": "Win64",
+            "includePath": [
+                "C:/dev/SDL+openGL/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-posix-seh-rt_v6-rev0\\mingw64\\bin\\gcc.exe",
+            "cStandard": "gnu17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-gcc-x64",
+            "compilerArgs": [
+                "-g",
+				"src/*.cpp",
+				"-o",
+				"build/violetExample.exe",
+                "src/Violet/*.cpp",
+				"-std=c++2a",
+                "-IC:/dev/SDL+openGL/include",
+                "-LC:/dev/SDL+openGL/lib",
+				"-lmingw32",
+				"-lSDL2main",
+				"-lSDL2",
+				"-lopengl32",
+				"-lglew32",
+				"-mconsole"
+            ]
+        }
+    ],
+    "version": 4
+}
