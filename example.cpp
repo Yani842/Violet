@@ -1,28 +1,17 @@
-#include <iostream>
-#include <memory>
-
 #include "src/Engine.h"
 
-// class wallObject : public Violet::Object {
-//  public:
-//   wallObject(int x, int y) { ObjectInit(x, y, 24, 24, [ "walls", "playerCollide" ]) }
-//   void update(float dt) override { std::cout << "update\n"; }
-//   // RemoveFromList
-//   // RemoveFromLists
-//   // AddToList
-//   // AddToLists
-// };
+class FireOB : public Violet::Object {};
 
 int main(int argc, char** args) {
-  // Violet::Window win;
-  // win.Init("Hello", 1024, 768);
 
-  // Violet::Level* startLevel = new Violet::Level([ "coins", "player" ]);
-  // win.SetCurrentLevel(startLevel);
-
-  // startLevel.NewLists([ "walls", "playerCollide" ]);
-
-  // wallObject* obj = wallObject();
+  Violet::Window win;
+  win.Init("Hello", 1024, 768);
+  Violet::Level startLV("1", "2", "3");
+  startLV.MarkListRenderable(10, "2");
+  win.SetLevel(&startLV);
+  FireOB f;
+  // f.Init(0, 0, 24, 24, "2", "1");
+  startLV.AddObject(&f, "3");
 
   return 0;
 }
