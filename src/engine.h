@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <concepts>
 #include <cstdint>
+#include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -13,18 +15,17 @@
 #include <vector>
 
 // future planning:
-// - user can choose shaders
-// - move objects via matrix (scroll and stuff)
-// - user can make custem event handlers
-// - add component system (physics, collidion, etc)
-// \ hide all the sruff the user dont need.
+// - after finishing all the opengl dtuff: multiple user choosed shaders per
+// object
+// - make user proof functiond(i.e. in AddObjectTo check if levels already
+// exist)
 
 // for tommorow:
 // - clean the comments
-// - finish writing the components interface
-// - write user interface to shaders
-// - add renderer gunctions to handle new/deleting vbo
-// - start the writing of the functions descriptions
+// \ finish writing the components interface
+// * write user interface to shaders
+// \ add renderer gunctions to handle new/deleting vbo
+// - start the writing of the functions definitions
 
 namespace Violet {
 // forward declaration
@@ -41,10 +42,12 @@ template <typename T>
 concept NameConcept = std::is_convertible_v<T, std::string>;
 
 template <typename T>
-concept ObjectConcept = std::derived_from<Object, T>;
+concept ObjectConcept = std::derived_from<T, Object>;
 
 template <typename T>
 concept ComponentConcept = std::derived_from<Object, T>;
+
+class ObjectList;
 
 // A rect
 struct Rect {
@@ -79,31 +82,18 @@ class RenderData {
  public:
   // gen bind vertexattribpointer unbind
   RenderData() {}
-
+  // is in a layer
+  bool renders = false;
+  // vbo - opengl stuff
   id VBO;
-  Animation* animation = nullptr;
+  // the object's animation
+  std::shared_ptr<Animation> animation;
   // is oneCycle animation ended one loop or the user decided to stop it
   bool stopAnimation = false;
   // how much time passed from the last texture change
   float pointInRate;
   // the index of the current rendering texture
   int currentTexture;
-};
-
-// manages a vector that holds objects
-class ObjectList {
- public:
-  void Add(Object* obj) { objects.push_back(obj->shared_from_this()); }
-
-  inline void Remove(Object* obj) {
-    objects.erase(
-        std::find(objects.begin(), objects.end(), obj->shared_from_this()));
-  }
-
-  std::vector<std::shared_ptr<Object>> inline Get() { return objects; }
-
- private:
-  std::vector<std::shared_ptr<Object>> objects;
 };
 
 // responsible for drawing the objects(handling opengl)
@@ -126,13 +116,17 @@ class Renderer {
   // looks-up the kanimation and returns a reference to it
   Animation& GetAnimation(std::string);
   // adds new animation to the map, called from level
-  void addAnimation(std::string, Animation animation);
+  void addAnimation(std::string, std::shared_ptr<Animation> animation);
+  // initializes the vbo in the given renderState
+  void initRenderState(RenderData* RS);
+  // deletes the given vbo in the renderState
+  void deleteRenderState(RenderData* RS);
 
  private:
   // 255 VAOs all set to 0
   id layers[sizeof(int8_t)] = {0};
   // a look-up map for animations - "name" : Animation
-  std::unordered_map<std::string, Animation> animations;
+  std::unordered_map<std::string, std::shared_ptr<Animation>> animations;
 };
 
 }  // namespace p
@@ -140,25 +134,33 @@ class Renderer {
 class Component {
  public:
   virtual void Update(float dt);
-}
+};
 
 // a base class for all the objcts the user will create
-class Object : private std::enable_shared_from_this<Object> {
+class Object : public std::enable_shared_from_this<Object> {
  public:
   // initializes the object
-  template <typename... listT>
-  friend void ObjectInit(Object obj, Level* level, p::Rect rect,
-                         const listT&... lists) {}
+  // template <typename... listT> , const listT&... lists
+  friend void ObjectInit(std::shared_ptr<Object> obj, Level* level,
+                         p::Rect rect) {}
+  // function that will call components update and then users update
+  friend void UpdateAll(float dt) {}
+
   // changes object's animation, resetState=false makes the new animation's
   // frame as the previous animation
   void SetAnimation(std::string animation, bool resetState = true);
   // creates new component and adds it to the list unless the onject alreasy
   // have one
-  template <p::ComponentConcept cmpT>
+  template <typename cmpT>
   void AddComponent() {}
+
   // deletes the component
   template <p::ComponentConcept cmpT>
   void DeleteComponent() {}
+  // called when pressed on it
+  void GotPressed(int x, int y);
+  // called when click releases on it
+  void GotReleased(int x, int y);
   // self-explanatory
   void StopAnimation();
   void ContinueAnimation();
@@ -169,15 +171,38 @@ class Object : private std::enable_shared_from_this<Object> {
   // called if the object is in an updatable list - should be overriden by
   // user
   virtual void Update(float dt) {}
+  // the level this object belongs to.
+  Level* level;
 
  private:
   p::RenderData RD;
   // position and size
   p::Rect rect;
-  // the level this object belongs to.
-  Level* level;
   // compomemt list
   std::vector<Component*> components;
+};
+
+namespace p {
+// Manages a vector that holds objects
+class ObjectList {
+ public:
+  inline void Add(Object* obj) { objects.push_back(obj->shared_from_this()); }
+
+  inline void Remove(Object* obj) {
+    objects.erase(
+        std::find(objects.begin(), objects.end(), obj->shared_from_this()));
+  }
+
+  inline std::vector<std::shared_ptr<Object>> Get() { return objects; }
+
+ private:
+  std::vector<std::shared_ptr<Object>> objects;
+};
+}  // namespace p
+
+enum Events {
+  WpressEvent,
+  // etc...
 };
 
 // Manages all the Objects threw lists.
@@ -189,9 +214,11 @@ class Level {
 
   // Creates new object from type and return pointer to it.
   template <p::ObjectConcept objectT, p::NameConcept... listT>
-  objectT* NewObject(p::Rect rect, const listT&... lists) {
-    Object ob;
-    ObjectInit(ob, this, {0, 0, 24, 24}, "1", "4");
+  Object* NewObject(p::Rect rect, const listT&... lists) {
+    std::shared_ptr<Object> obj(new objectT());
+    ObjectInit(obj, this, rect);
+    AddObjectTo(obj.get(), lists...);
+    return obj.get();
   }
 
   // Deletes an object from all the lists.
@@ -201,11 +228,21 @@ class Level {
 
   // Adds object to lists.
   template <p::NameConcept... listT>
-  void AddObject(Object* object, const listT&... lists) {}
+  void AddObjectTo(Object* object, const listT&... lists) {
+    for (auto list : {lists...}) {
+      map.at(list).Add(object);
+      // check if object renders if yes skip and cout if no add
+    }
+  }
 
   // Removes object from lists.
   template <p::NameConcept... listT>
-  void RemoveObject(Object* object, const listT&... lists) {}
+  void RemoveObjectFrom(Object* object, const listT&... lists) {
+    for (auto list : {lists...}) {
+      map.at(list).Remove(object);
+      // if in renderable list(RD bool) - renderer.deleteRD
+    }
+  }
 
   // Adds lists to the level.
   template <p::NameConcept... listT>
@@ -214,6 +251,12 @@ class Level {
   // Removes lists from the level.
   template <p::NameConcept... listT>
   void DeleteLists(const listT&... lists) {}
+
+  // Returns list's vector of shared ptr.
+  template <p::NameConcept listT>
+  std::vector<std::shared_ptr<Object>> GetList(listT list) {
+    return map.at(list).Get();
+  }
 
   // Makes the list updatable - the Update function of this list's objects
   // will be called every frame.
@@ -227,8 +270,10 @@ class Level {
 
   // This list's object will be rendered at the layer. if there was a list at
   // this layer he will be overriten.
+  // ! update rendereable accordinaly
+  // ! make sure the object is not already in a layer(bool in RD) and mark it
   template <p::NameConcept... listT>
-  void MarkListRenderable(uint8_t layer, const listT&... lists) {}
+      / void MarkListRenderable(uint8_t layer, const listT&... lists) {}
 
   // Clears the layer - removes the list at this layer if existed.
   void ClearLayer(int8_t layer) {}
@@ -237,6 +282,9 @@ class Level {
   // creates animation and calls renderer's addanimation function with it
   void AddAnimation(std::string name, float rate, std::vector<p::Rect> textures,
                     bool noAnimation = false, bool oneCycle = false) {}
+
+  // event listener, when event happends listner will be called.
+  void OnEvent(Events event, std::function<void()> listener) {}
 
   // Calls Update to the updatable lists's objects.
   void Update(float dt) {}
@@ -253,11 +301,14 @@ class Level {
   // an object at all times)
   std::vector<std::shared_ptr<Object>> all;
   // a look-up map for lists
-  std::unordered_map<std::string, p::ObjectList> ObjectList;
+  std::unordered_map<std::string, p::ObjectList> map;
   // all the draw stuff
-  p::Renderer renderer();
-  // lists that eill call update on their objects
+  p::Renderer renderer;
+  // lists that will call update on their objects
   std::vector<std::string> updatable;
+  // all renderable lists by layer order to update the renderer's layer when
+  // abject added/removed from renderable list
+  std::shared_ptr<p::ObjectList> renderable[sizeof(uint8_t)] = {nullptr};
 };
 
 // Manages the mainloop, timing and the window.
@@ -275,6 +326,14 @@ class Window {
   void SetLevel(Level* level) {
     if (p::ActiveLevel) p::ActiveLevel->Destroy();
     p::ActiveLevel = level;
+  }
+
+  // Creates a level from template and sets this level.
+  // Returns pointer to level.
+  template <p::NameConcept... listT>  // uses variadic templates.
+  Level* CreateLevel(const listT&... lists) {
+    p::ActiveLevel = new Level(lists...);
+    return p::ActiveLevel;
   }
 
   // Starts the mainloop.
@@ -322,4 +381,4 @@ class Window {
 
 }  // namespace Violet
 
-#endif  // VIOLET_SRC_ENGINE_H
+#endif  // VIOLET_SRC_ENGINE_Hrenderable
