@@ -10,16 +10,14 @@
         "UNICODE",
         "_UNICODE"
       ],
-      "compilerPath": "C:\\dev\\mingw64\\bin\\g++.exe",
+      "compilerPath": "C:/dev/msys64/mingw64/bin/g++.exe",
       "cStandard": "gnu17",
       "cppStandard": "c++20",
       "intelliSenseMode": "windows-gcc-x64",
       "compilerArgs": [
         "-g",
         "*.cpp",
-        // "src/*.cpp",
-        "src/Graphics/*.cpp",
-        "src/Managment/*.cpp",
+        "src/*.cpp",
         "-o",
         "build/violet.exe",
         "-std=c++2a",
