@@ -1,10 +1,18 @@
 #ifndef VIOLET_SRC_ENGINE_H
 #define VIOLET_SRC_ENGINE_H
 
+#define LAYER_COUNT 255
+
+// clang-format off
+#include <GL/glew.h>
+#include <GL/gl.h>
 #include <SDL2/SDL.h>
+// clang-format on
 
 #include <algorithm>
+#include <cmath>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
@@ -18,17 +26,16 @@
 // - after finishing all the basic opengl stuff: multiple user choosed shaders
 // per object option
 // - make api for scroll with parallax effect.
+// - do the event system.
+// - convert as much code to algorithm functions and then inline.
 // - make user proof functiond(i.e. in AddObjectTo check if levels already
 // exist etc)
 // - after opengl built-in components. make animation a component. movement,
 // collision, etc.
 
 // for tommorow:
-// - clean the comments
-// \ finish writing the components interface
-// * write user interface to shaders
-// \ add renderer gunctions to handle new/deleting vbo
-// - start the writing of the functions definitions
+// finish the basic renderer stuff and everything around it
+// delete layers, one vao, lists added and removed
 
 namespace Violet {
 // forward declaration
@@ -41,8 +48,12 @@ using id = uint32_t;
 
 extern Level* ActiveLevel;
 
+// concepts to prevent the user from typing in the wrong types or things
 template <typename T>
-concept NameConcept = std::is_convertible_v<T, std::string>;
+concept NameConcept = requires(T a) {
+  { a != "" } -> std::convertible_to<bool>;
+  { std::is_convertible_v<T, std::string> } -> std::convertible_to<bool>;
+};
 
 template <typename T>
 concept ObjectConcept = std::derived_from<T, Object>;
@@ -63,32 +74,50 @@ struct Rect {
 // contains only information about an animation
 struct Animation {
   // vector of the rects of the textures from the texture atlas
-  std::vector<Rect> Textures;
+  const std::vector<Rect> Textures;
   // how much time passes between texture change (in seconds)
-  float rate;
+  const float rate;
   // only one texture that doesn't change
-  bool noAnimation = false;
+  const bool noAnimation = false;
   // it loops over the texture once and disappears
-  bool oneCycle = false;
+  const bool oneCycle = false;
 };
 
 // all the data sent to the gpu per vertex
 struct Vertex {
-  // pos
-  // size
-  // texpos
-  // texsize
+  struct Pos {
+    float x;
+    float y;
+  } pos;
+  struct size {
+    int w;
+    int h;
+  } size;
+  struct tex {
+    struct pos {
+      int x;
+      int y;
+    } pos;
+    struct size {
+      int w;
+      int h;
+    } size;
+  } tex;
 };
 
 // each object has that - responsible for all the per object rnder information
 class RenderData {
  public:
-  // gen bind vertexattribpointer unbind
-  RenderData() {}
+  // gen vbo
+  RenderData();
+  // update the animation stuff and vbo accordinly
+  void Update(float dt);
   // is in a layer
   bool renders = false;
   // vbo - opengl stuff
   id VBO;
+  // vertices
+  p::Vertex vertices[4];
   // the object's animation
   std::shared_ptr<Animation> animation;
   // is oneCycle animation ended one loop or the user decided to stop it
@@ -109,11 +138,17 @@ class Component {
 // a base class for all the objcts the user will create
 class Object : public std::enable_shared_from_this<Object> {
  public:
+  // friend function makes the function access private members of given object
+  // with the type it was declared in and cant be accessed by derived classes
+  // and can by from the namespace
+
   // initializes the object
   // template <typename... listT> , const listT&... lists
   friend void ObjectInit(std::shared_ptr<Object> obj, Level* level,
                          p::Rect rect) {}
+
   // function that will call components update and then users update
+  // ! update also the RD
   friend void UpdateAll(Object* obj, float dt) {}
 
   // returns the RenderData
@@ -179,35 +214,41 @@ class ObjectList {
 class Renderer {
  public:
   // init shaders
-  void Init() {}
+  Renderer(std::string textureAtlas);
   // Updates the RenderData of all the objects from the layers.
-  void Update() {}
+  void Update(float dt);
   // each frame draws objects
   // loop over each layer and draws it
-  void Render() {}
+  void Render();
   // adds list to the layer
   // bindind each vbo of all the list's objects to the layer's vao
-  void Bind(int8_t layer, ObjectList list) {}
+  void Bind(int8_t layer, ObjectList* list);
   // clears a layer
   // sets layer to null
-  void Unbind(int8_t layer) {}
+  void Unbind(int8_t layer);
   // returns refernce to the animation
   // looks-up the kanimation and returns a reference to it
-  Animation* GetAnimation(std::string animation) {
+  inline Animation* GetAnimation(std::string animation) {
     return (map.at(animation).get());
   }
   // adds new animation to the map, called from level
-  void addAnimation(std::string, Animation* animation) {}
+  void AddAnimation(std::string, Animation animation);
   // initializes the vbo in the given renderState
-  void initObject(Object* object) {}
+  void InitObject(RenderData* RD);
   // deletes the given vbo in the renderState
-  void deleteObject(Object* object) {}
+  void DeleteObject(RenderData* RD);
 
  private:
   // 255 VAOs all set to 0
-  id layers[sizeof(int8_t)] = {0};
-  // a look-up map for animations - "name" : Animation
+  id layers[LAYER_COUNT];
+  // map: (name: animation) the shared is bcs every RD has a pointer to its
+  // animation and map changes the adress everytime something added/removed so
+  // raw pointer is useless andd will point to random shit shared ptr helps
   std::unordered_map<std::string, std::shared_ptr<Animation>> map;
+  // every 3 is a triangle by the vertexes
+  const uint8_t indices[6] = {0, 1, 3, 1, 2, 3};
+  // the way the squares are sliced into trianlges
+  id EBO;
 };
 
 }  // namespace p
@@ -222,7 +263,7 @@ class Level {
  public:
   // Initializes renderer and creates lists.
   template <p::NameConcept... listT>  // uses variadic templates.
-  Level(const listT&... lists) {
+  Level(const listT&... lists) :renderer("") {
     NewLists(lists...);
   }
 
@@ -238,7 +279,7 @@ class Level {
   inline Object* NewObject(p::Rect rect, const listT&... lists) {
     std::shared_ptr<Object> obj(new objectT());
     ObjectInit(obj, this, rect);
-    renderer.initObject(obj.get());
+    renderer.InitObject(getRD(obj.get()));
     AddObjectTo(obj.get(), lists...);
     return obj.get();
   }
@@ -250,7 +291,7 @@ class Level {
     for (auto list : map) {
       list.second.Remove(object);
     }
-    renderer.deleteObject(object);
+    renderer.DeleteObject(getRD(object));
   }
 
   // Adds object to lists.
@@ -272,7 +313,7 @@ class Level {
     for (auto list : {lists...}) {
       map.at(list).Remove(object);
       if (getRD(object)->renders) {
-        renderer.deleteObject(object);
+        renderer.DeleteObject(getRD(object));
         getRD(object)->renders = false;
       }
     }
@@ -346,7 +387,7 @@ class Level {
       getRD(obj.get())->renders = true;
     }
     // the renderer will do all the inside stuff
-    renderer.Bind(layer, map.at(list));
+    renderer.Bind(layer, &map.at(list));
     // to make sure it wont be called to render again
     renderable[layer] = list;
   }
@@ -366,7 +407,7 @@ class Level {
                     std::initializer_list<p::Rect> textures,
                     bool noAnimation = false, bool oneCycle = false) {
     p::Animation animation{textures, rate, noAnimation, oneCycle};
-    renderer.addAnimation(name, &animation);
+    renderer.AddAnimation(name, animation);
   }
 
   // event listener, when event happends listner will be called.
@@ -397,7 +438,7 @@ class Level {
   std::vector<std::string> updatable;
   // all renderable lists by layer order to update the renderer's layer when
   // abject added/removed from renderable list
-  std::string renderable[255];
+  std::string renderable[LAYER_COUNT];
 };
 
 // Manages the mainloop, timing and the window.
@@ -409,6 +450,7 @@ class Window {
     window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED,
                               SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL);
     SDL_GL_CreateContext(window);
+    glewInit();
   }
 
   // This level will manage all the objects.

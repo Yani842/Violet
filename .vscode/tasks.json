@@ -9,8 +9,6 @@
       "command": "g++",
       "args": [
         "-g",
-        // "-static-libgcc",
-        // "-static-libstdc++",
         "*.cpp",
         "src/*.cpp",
         "-o",
