@@ -1,8 +1,20 @@
+#include <iostream>
+#include <string>
+
 #include "engine.h"
 
-using namespace Violet::p;
+// clang-format off
+#include <GL/glew.h>
+#include <GL/gl.h>
+#include <SDL2/SDL.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+// clang-format on
 
-RenderData::RenderData() { glGenBuffers(1, &VBO); }
+using namespace Violet::p;
 
 void RenderData::Update(float dt) {
   // dont do anything is its single texture or stopped
@@ -10,20 +22,22 @@ void RenderData::Update(float dt) {
     return;
   }
   // add the time passed from the prev update
-  pointInRate += dt;
+  TimePassed += dt;
 
-  currentTexture = static_cast<int>(std::floor(pointInRate / animation->rate));
+  currentTexture = static_cast<int>(std::floor(TimePassed / animation->rate));
   if (animation->oneCycle && currentTexture > animation->Textures.size()) {
     stopAnimation = true;
   } else {
     currentTexture %= animation->Textures.size();
+    VBO.SetTexture(
+        animation->Textures.at(currentTexture));  // optimise - not every time
   }
-  if (pointInRate > animation->rate * animation->Textures.size()) {
-    pointInRate = 0;
+  if (TimePassed > animation->rate * animation->Textures.size()) {
+    TimePassed = 0;
   }
 
-  // if (pointInRate > animation->rate) {
-  //   pointInRate = 0;
+  // if (TimePassed > animation->rate) {
+  //   TimePassed = 0;
   //   currentTexture++;
   //   // it was the last texture in order
   //   if (currentTexture >= animation->Textures.size()) {
@@ -36,51 +50,75 @@ void RenderData::Update(float dt) {
   // }
 }
 
-Renderer::Renderer(std::string textureAtlas) {
+Renderer::Renderer(std::string texturePath) {
+  shader.init("data/shader.vs", "data/shader.fs");
+  shader.use();
+
   // init VAOs
-  glGenVertexArrays(255, layers);
+  glGenVertexArrays(1, &VAO);
   // init EBO - how to slice rects into triangles with the indices
   glGenBuffers(1, &EBO);
-  // to draw and then show, to show everything at the same time
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  // the color of the bg
-  glClearColor(0.0f, 0.0f, 1.0f, 0.0f);
-  // to allow transparency
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC0_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-}
-
-void Renderer::Bind(int8_t layer, ObjectList* list) {
-  glBindVertexArray(layers[layer]);
+  // bind vao to init it
+  glBindVertexArray(VAO);
+  // every 3 is a triangle by the vertexes
+  const unsigned int indices[6] = {0, 1, 3, 1, 2, 3};
   // bind indices to EBO
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
                GL_STATIC_DRAW);
-  // bind all vbos to layer(vao)
-  for (auto obj : list->Get()) {
-    glBindBuffer(GL_ARRAY_BUFFER, getRD(obj.get())->VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(p::Vertex) * 4,
-                 getRD(obj.get())->vertices, GL_STATIC_DRAW);
-  }
-  // decipher Vertex to opengl
-  // position
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(p::Vertex), (void*)offsetof(p::Vertex, pos));
-  glEnableVertexAttribArray(0);
-  // size
-  glVertexAttribPointer(1, 2, GL_INT, GL_FALSE, sizeof(p::Vertex), (void*)offsetof(p::Vertex, size));
-  glEnableVertexAttribArray(1);
-  // texture position in the texture atlas
-  glVertexAttribPointer(2, 2, GL_INT, GL_FALSE, sizeof(p::Vertex), (void*)offsetof(p::Vertex, tex.pos));
-  glEnableVertexAttribArray(2);
-  // texture width and height in the texture atlas
-  glVertexAttribPointer(3, 2, GL_INT, GL_FALSE, sizeof(p::Vertex), (void*)offsetof(p::Vertex, tex.size));
-  glEnableVertexAttribArray(3);
-  // unbind layer
-  glBindVertexArray(0);
-}
 
-void Renderer::Unbind(int8_t layer) { glDeleteVertexArrays(1, &layers[layer]); }
-void Renderer::AddAnimation(std::string, Animation animation) {}
-void Renderer::InitObject(RenderData* RD) {}
-void Renderer::DeleteObject(RenderData* RD) {}
-void Renderer::Render() {}
+  // to draw and then show, to show everything at the same time
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  // the color of the bg
+  glClearColor(0.3f, 0.3f, 0.5f, 1.0f);
+  // to allow transparency
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  unsigned int textureUniform = glGetUniformLocation(shader.ID, "Texture");
+  glUniform1i(textureUniform, 0);
+
+  // transforms
+  // glm::mat4 trans = glm::mat4(1.0f);
+  // trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
+  // trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+
+  glm::mat4 model = glm::mat4(1.0f);
+  model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+  glm::mat4 view = glm::mat4(1.0f);
+  view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+  glm::mat4 projection;
+  projection =
+      glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+
+  unsigned int modelLoc = glGetUniformLocation(shader.ID, "model");
+  glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+  unsigned int viewLoc = glGetUniformLocation(shader.ID, "view");
+  glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+  unsigned int projectionLoc = glGetUniformLocation(shader.ID, "projection");
+  glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+  // create texture atlas
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  // set the texture wrapping parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  // set texture filtering parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  int width, height, nrChannels;
+  stbi_set_flip_vertically_on_load(true);
+  unsigned char* data =
+      stbi_load(texturePath.c_str(), &width, &height, &nrChannels, 0);
+  if (data) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+  } else {
+    std::cout << "Failed to load texture\n";
+  }
+  stbi_image_free(data);
+}
