@@ -17,7 +17,8 @@
       "compilerArgs": [
         "-g",
         "*.cpp",
-        "src/*.cpp",
+        // "src/*.cpp",
+        "src/details/*.cpp",
         "-o",
         "build/violet.exe",
         "-std=c++2a",
