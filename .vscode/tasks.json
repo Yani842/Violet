@@ -1,19 +1,15 @@
 {
-  // See https://go.microsoft.com/fwlink/?LinkId=733558
-  // for the documentation about the tasks.json format
   "version": "2.0.0",
   "tasks": [
     {
       "label": "Violet build",
-      "type": "cppbuild",
+      "type": "shell",
       "command": "g++",
       "args": [
         "-g",
-        "-DWARF2",
-        "-static-libgcc",
-        "-static-libstdc++",
+        "-std=c++20",
+        "-std=gnu++20",
         "*.cpp",
-        // "src/*.cpp",
         "src/details/*.cpp",
         "-o",
         "build/Violet.exe",
@@ -26,6 +22,31 @@
         "-lopengl32",
         "-lglew32",
         "-mconsole",
+        // "-pedantic",
+        // "-Wall",
+        // "-Wextra",
+        // "-Wcast-align",
+        // "-Wcast-qual",
+        // "-Wctor-dtor-privacy",
+        // "-Wdisabled-optimization",
+        // "-Wformat=2",
+        // "-Winit-self",
+        // "-Wlogical-op",
+        // "-Wmissing-declarations",
+        // "-Wmissing-include-dirs",
+        // "-Wnoexcept",
+        // "-Wold-style-cast",
+        // "-Woverloaded-virtual",
+        // "-Wredundant-decls",
+        // "-Wshadow",
+        // "-Wsign-conversion",
+        // "-Wsign-promo",
+        // "-Wstrict-null-sentinel",
+        // "-Wstrict-overflow=5",
+        // "-Wswitch-default",
+        // "-Wundef",
+        // "-Werror",
+        // "-Wno-unused"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

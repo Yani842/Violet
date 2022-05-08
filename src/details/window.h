@@ -27,7 +27,7 @@ class Window {
   }
 
   // Starts the mainloop.
-  void Run();
+  void Run(bool printFps = false);
 
  private:
   // keep the game running

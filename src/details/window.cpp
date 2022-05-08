@@ -8,11 +8,14 @@ void Violet::Window::Init(detail::str title, int w, int h) {
   glewInit();
 }
 
-void Violet::Window::Run() {
+void Violet::Window::Run(bool printFps) {
   Uint32 lastUpdate = SDL_GetTicks();
+  Uint64 start_;
   // main loop
   while (running) {
-    // Uint64 start_ = SDL_GetPerformanceCounter();
+    if (printFps) {
+      start_ = SDL_GetPerformanceCounter();
+    }
     Uint64 start = SDL_GetTicks();
 
     // events
@@ -21,6 +24,8 @@ void Violet::Window::Run() {
       switch (event.type) {
         case SDL_QUIT:
           running = false;
+          break;
+        default:
           break;
       }
     }
@@ -38,11 +43,13 @@ void Violet::Window::Run() {
     lastUpdate = current;
     Uint64 end = SDL_GetTicks();
     auto elapsed = end - start;
-    if (elapsed < 16.666f) {
+    if (elapsed < 16.666f && !printFps) {
       SDL_Delay(16.666f - elapsed);
     }
-    // Uint64 end_ = SDL_GetPerformanceCounter();
-    // float elapsed_ = (end_ - start_) / (float)SDL_GetPerformanceFrequency();
-    // std::cout << "Current FPS: " << 1.0f / elapsed_ << "\n";
+    if (printFps) {
+      Uint64 end_ = SDL_GetPerformanceCounter();
+      float elapsed_ = (end_ - start_) / static_cast<float>(SDL_GetPerformanceFrequency());
+      std::cout << "Current FPS: " << 1.0f / elapsed_ << "\n";
+    }
   }
 }

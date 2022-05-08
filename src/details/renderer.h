@@ -17,16 +17,28 @@
 
 namespace Violet {
 namespace detail {
+// loads and binds the texture in the given path
+class Texture {
+ public:
+  void Load(str path);
+  id texture;
+};
 // responsible for handling every opengl aspect
 class Renderer {
  public:
   // init opengl objects
-  Renderer(std::string textureAtlas);
+  Renderer(str textureAtlas);
   // draws objects
-  inline void Render() {
-    glClear(GL_COLOR_BUFFER_BIT);
-    // glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  void Render();
+
+  // start rendering this object
+  inline void AddVbo(id vbo) { VBOs.push_back(vbo); }
+  // stop rendering this object
+  inline void DeleteVbo(id vbo) {
+    auto find = std::find(VBOs.begin(), VBOs.end(), vbo);
+    if (find != VBOs.end()) {
+      VBOs.erase(find);
+    }
   }
   // returns shared ptr to the animation
   inline std::shared_ptr<Animation> GetAnimation(std::string animation) {
@@ -45,9 +57,12 @@ class Renderer {
   }
 
  private:
+  // buffers
   id VAO;
   id EBO;
-  id texture;
+  std::vector<id> VBOs;
+  // handlers for specific topics
+  Texture texture;
   Shader shader;
   // map: (name: animation) the shared is bcs every RD has a pointer to it and
   // raw ptr wont work bcs map reallocates it's object

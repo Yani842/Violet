@@ -48,7 +48,7 @@ class Level {
  public:
   // Initializes renderer and creates lists.
   template <detail::NameConcept... listT>  // uses variadic templates.
-  Level(std::string texturePath, const listT&... lists)
+  Level(detail::str texturePath, const listT&... lists)
       : renderer(texturePath) {
     detail::ActiveRenderer = &renderer;
     NewLists(lists...);

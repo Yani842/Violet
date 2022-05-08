@@ -12,6 +12,8 @@
 
 #include "structs.h"
 #include "types.h"
+#include "globals.h"
+#include "renderer.h"
 
 namespace Violet {
 namespace detail {
@@ -25,14 +27,15 @@ class RenderData {
       glBindBuffer(GL_ARRAY_BUFFER, vbo);
       glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
       // position
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vertex),
-                            (void*)offsetof(Vertex, pos));
-      glEnableVertexAttribArray(0);
-      // texture position in the texture atlas
-      glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, sizeof(Vertex),
-                            (void*)offsetof(Vertex, texPos));
-      glEnableVertexAttribArray(1);
+      // glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, sizeof(Vertex),
+      //                       (void*)offsetof(Vertex, pos));
+      // glEnableVertexAttribArray(0);
+      // // texture position in the texture atlas
+      // glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, sizeof(Vertex),
+      //                       (void*)offsetof(Vertex, texPos));
+      // glEnableVertexAttribArray(1);
       glBindBuffer(GL_ARRAY_BUFFER, 0);
+      ActiveRenderer->AddVbo(vbo);
       renders = true;
     }
     inline void Update() {  // update only texpos / pos
@@ -44,12 +47,12 @@ class RenderData {
     inline void Delete() {
       glDeleteBuffers(1, &vbo);
       renders = false;
-      std::cout << "delete\n";
+      ActiveRenderer->DeleteVbo(vbo);
     }
     inline id Get() { return vbo; }
     inline void SetTexture(Rect rect) {
       // everything here is to transform from "pygame coords sys"
-      // (top left is 0, 0 to screen size (e.g. 768, 1024)) to opengl coords sys
+      // (top left is 0, 0 to screen size (i.e. 768, 1024)) to opengl coords sys
       rect.x = (60 - rect.x) / -60.0f;
       rect.y = (219 - rect.y) / -219.0f;
       rect.w /= 60.0f;
@@ -61,9 +64,13 @@ class RenderData {
       Update();
     }
     inline void SetRect(Rect rect) {
+      rect.x = (rect.x) / 1024.0f;
+      rect.y = (rect.y) / 768.0f;
+      rect.w /= 1024.0f;
+      rect.h /= 768.0f;
       vertices[0].pos = {rect.x, rect.y};
-      vertices[1].pos = {rect.x + rect.w, rect.y};
-      vertices[2].pos = {rect.x + rect.w, rect.y + rect.h};
+      vertices[1].pos = {rect.x - rect.w, rect.y};
+      vertices[2].pos = {rect.x - rect.w, rect.y + rect.h};
       vertices[3].pos = {rect.x, rect.y + rect.h};
       Update();
     }

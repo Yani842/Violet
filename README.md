@@ -1,3 +1,2 @@
 # Violet
-Game engine build on c++, SDL2 and OpenGL.
-this project will contain 2d sprite managment and networking.
+Game engine build on SDL2 and OpenGL4.6.\n this game engine will contain easy object managment and rendering and also networking.

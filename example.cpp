@@ -6,24 +6,29 @@ class c1 : Violet::Component {};
 
 class c2 : Violet::Component {};
 
-class FireOB : public Violet::Object {
+class GhostOB : public Violet::Object {
  public:
-  FireOB() : Object() {
+  GhostOB() : Object() {
     AddComponent<c1>();
-    SetAnimation("fire");
+    SetAnimation("ghost-idle");
   }
+  void Update(float dt) override {
+    // setPosition(positionX, 0);
+    // positionX += 1;
+  }
+private:
+  int positionX = 0;
 };
 
 int main(int argc, char** args) {
   Violet::Window win;
   win.Init("Test🙂", 1024, 768);
-  auto mainLvl = win.CreateLevel("data/textures.png", "1", "2", "3");
-  mainLvl->AddAnimation("fire", 0, {{30, 15, 20, 27}}, true);
-  mainLvl->UpdateLists("3");
-  auto o1 = mainLvl->NewObject<FireOB>({-1, -1, 2, 2}, "1", "3");
-  mainLvl->StartRenderingLists("2", "1");
-  mainLvl->NewLists("4");
-  mainLvl->AddObjectTo(o1, "4");
+  auto mainLvl = win.CreateLevel("data/textures.png", "update", "render", "ghosts");
+  mainLvl->AddAnimation("ghost-idle", 0, {{30, 15, 20, 27}}, true);
+  auto o1 = mainLvl->NewObject<GhostOB>({100, 100, 200, 200}, "update", "render", "ghosts");
+  auto o2 = mainLvl->NewObject<GhostOB>({0, 0, 200, 200}, "update", "render", "ghosts");
+  mainLvl->StartRenderingLists("render");
+  mainLvl->UpdateLists("update");
 
   win.Run();
   return 0;
