@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include <vector>
 
 namespace Violet {
@@ -32,15 +33,8 @@ struct Animation {
 
 // all the data sent to the gpu per vertex
 struct Vertex {
-  struct Pos {
-    float x = 0;
-    float y = 0;
-    float z = 0;
-  } pos;
-  struct texPos {
-    float x = 0;
-    float y = 0;
-  } texPos;
+  glm::vec3 pos;
+  glm::vec3 texPos;
 };
 }  // namespace detail
 }  // namespace Violet

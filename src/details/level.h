@@ -162,7 +162,7 @@ class Level {
   void Update(float dt) {
     for (auto list : updatable) {
       for (auto obj : map.at(list).Get()) {
-        UpdateObject(obj.get(), dt);
+        obj->UpdateAll(dt);
       }
     }
   }

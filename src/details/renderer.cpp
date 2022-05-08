@@ -38,42 +38,13 @@ Violet::detail::Renderer::Renderer(str texturePath) {
   shader.init("data/shader.vs", "data/shader.fs");
   shader.use();
 
-  // // init VAOs
-  // glGenVertexArrays(1, &VAO);
-  // init EBO - how to slice rects into triangles with the indices
+  // to save memory space
   glGenBuffers(1, &EBO);
-  // // bind vao to init it
-  // glBindVertexArray(VAO);
-  // every 3 is a triangle by the vertexes
   const unsigned int indices[6] = {0, 1, 3, 1, 2, 3};
   // bind indices to EBO
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
                GL_STATIC_DRAW);
-
-  // // vertex setup
-  // glGenVertexArrays(1, &VAO);
-
-  // glBindVertexArray(VAO);
-  // // positon
-  // // Sets up the format, *without* a buffer object.
-  // glVertexAttribFormat(0, 3, GL_FLOAT, GL_TRUE, offsetof(Vertex, pos));
-  // // Sets up where the buffer object comes from
-  // glVertexAttribBinding(0, 0);
-  // // Enable VAO
-  // glEnableVertexAttribArray(0);
-  // // texture
-  // // Sets up the format, *without* a buffer object.
-  // glVertexAttribFormat(1, 2, GL_FLOAT, GL_TRUE, offsetof(Vertex, texPos));
-  // // Sets up where the buffer object comes from
-  // glVertexAttribBinding(1, 0);
-  // // Enable VAO
-  // glEnableVertexAttribArray(1);
-  // //
-  // glVertexBindingDivisor(1, 1);
-  // // Done with VAO
-  // glBindVertexArray(0);
-
   // to draw and then show, to show everything at the same time
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   // the color of the bg
@@ -85,16 +56,10 @@ Violet::detail::Renderer::Renderer(str texturePath) {
   GLint textureUniform = glGetUniformLocation(shader.ID, "Texture");
   glUniform1i(textureUniform, 0);
 
-  // transforms
-  // glm::mat4 trans = glm::mat4(1.0f);
-  // trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
-  // trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
-
   glm::mat4 model = glm::mat4(1.0f);
-  glm::mat4 view = glm::mat4(1.0f) =
-      glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-  glm::mat4 projection =
-      glm::perspective(glm::radians(45.0f), 2.0f / 2.0f, 0.1f, 100.0f);
+  glm::mat4 view = glm::mat4(1.0f);
+  view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+  glm::mat4 projection = glm::ortho(0.0f, 1024.0f, 0.0f, 768.0f, 0.1f, 100.0f);
 
   GLint modelLoc = glGetUniformLocation(shader.ID, "model");
   glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));

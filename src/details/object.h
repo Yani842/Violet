@@ -23,8 +23,10 @@ class Object : public std::enable_shared_from_this<Object> {
  public:
   // function that will call components update and then users update
   // ! update also the RD
-  inline friend void UpdateObject(Object* obj, float dt) {
-    obj->Update(dt);
+  inline void UpdateAll(float dt) {
+    RD.Update(dt);
+    // upadte components
+    Update(dt);
   }
   // must be called before any Violet's function regarding the object
   Object() : level(ActiveLevel), renderer(detail::ActiveRenderer) {}

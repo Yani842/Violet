@@ -9,7 +9,7 @@ void Violet::detail::RenderData::Update(float dt) {
   TimePassed += dt;
 
   currentTexture = static_cast<int>(std::floor(TimePassed / animation->rate));
-  if (animation->oneCycle && currentTexture > animation->Textures.size()) {
+  if (animation->oneCycle && currentTexture > animation->Textures.size() - 1) {
     stopAnimation = true;
   } else {
     currentTexture %= animation->Textures.size();
@@ -19,17 +19,4 @@ void Violet::detail::RenderData::Update(float dt) {
   if (TimePassed > animation->rate * animation->Textures.size()) {
     TimePassed = 0;
   }
-
-  // if (TimePassed > animation->rate) {
-  //   TimePassed = 0;
-  //   currentTexture++;
-  //   // it was the last texture in order
-  //   if (currentTexture >= animation->Textures.size()) {
-  //     currentTexture = 0;
-  //     // the animation do not repeat
-  //     if (animation->oneCycle) {
-  //       stopAnimation = true;
-  //     }
-  //   }
-  // }
 }

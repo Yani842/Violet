@@ -57,21 +57,17 @@ class RenderData {
       rect.y = (219 - rect.y) / -219.0f;
       rect.w /= 60.0f;
       rect.h /= 219.0f;
-      vertices[0].texPos = {rect.x + rect.w, rect.y + rect.h};
-      vertices[1].texPos = {rect.x, rect.y + rect.h};
-      vertices[2].texPos = {rect.x, rect.y};
-      vertices[3].texPos = {rect.x + rect.w, rect.y};
+      vertices[0].texPos = {rect.x + rect.w, rect.y + rect.h, 1.0f};
+      vertices[1].texPos = {rect.x, rect.y + rect.h, 1.0f};
+      vertices[2].texPos = {rect.x, rect.y, 1.0f};
+      vertices[3].texPos = {rect.x + rect.w, rect.y, 1.0f};
       Update();
     }
     inline void SetRect(Rect rect) {
-      rect.x = (rect.x) / 1024.0f;
-      rect.y = (rect.y) / 768.0f;
-      rect.w /= 1024.0f;
-      rect.h /= 768.0f;
-      vertices[0].pos = {rect.x, rect.y};
-      vertices[1].pos = {rect.x - rect.w, rect.y};
-      vertices[2].pos = {rect.x - rect.w, rect.y + rect.h};
-      vertices[3].pos = {rect.x, rect.y + rect.h};
+      vertices[0].pos = {rect.x, rect.y, 1.0f};
+      vertices[1].pos = {rect.x + rect.w, rect.y, 1.0f};
+      vertices[2].pos = {rect.x + rect.w, rect.y + rect.h, 1.0f};
+      vertices[3].pos = {rect.x, rect.y + rect.h, 1.0f};
       Update();
     }
 
